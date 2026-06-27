@@ -76,7 +76,7 @@ Write-Host "Press CTRL+C to stop the service" -ForegroundColor Yellow
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host ""
 
-http-server dist -p 5353 -c-1
+http-server dist -p 5353 -a 26.101.130.210 -c-1
 
 Read-Host "Press Enter to exit"
 

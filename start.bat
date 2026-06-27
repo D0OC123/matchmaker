@@ -77,7 +77,7 @@ echo Press CTRL+C to stop the service
 echo ============================================
 echo.
 
-call http-server dist -p 5353 -c-1
+call http-server dist -p 5353 -a 26.101.130.210 -c-1
 
 pause
 
