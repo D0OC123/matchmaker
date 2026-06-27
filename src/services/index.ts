@@ -1,6 +1,6 @@
 /**
  * Services Index - Central export of all services
- * Provides easy access to service classes throughout the application
+ * Backend services only
  */
 
 export { EventEmitter } from './EventEmitter';

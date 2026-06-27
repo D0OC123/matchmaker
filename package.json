@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "serve": "npx http-server dist -p 8080"
+    "serve": "http-server dist -p 5353 -c-1 -a 26.101.130.210"
   },
   "keywords": ["matchmaker", "ogfn", "typescript"],
   "author": "",

@@ -77,9 +77,7 @@ export class GameModeSelector {
   private getModeDisplayName(mode: GameMode): string {
     const displayNames: Record<GameMode, string> = {
       [GameMode.SOLO]: 'Solo',
-      [GameMode.DUO]: 'Duo',
-      [GameMode.SQUAD]: 'Squad',
-      [GameMode.CUSTOM]: 'Custom'
+      [GameMode.ONLINE]: 'Online'
     };
     return displayNames[mode];
   }

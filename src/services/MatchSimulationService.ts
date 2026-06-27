@@ -83,10 +83,8 @@ export class MatchSimulationService {
    */
   private static getGameModeInfo(gameMode: GameMode): string {
     const modeDescriptions: Record<GameMode, string> = {
-      [GameMode.SOLO]: 'Free-for-all combat - Every player for themselves',
-      [GameMode.DUO]: 'Team up with one partner for synchronized gameplay',
-      [GameMode.SQUAD]: 'Lead your squad of four to victory',
-      [GameMode.CUSTOM]: 'Custom match with special rules'
+      [GameMode.SOLO]: 'Play alone - Every player for themselves',
+      [GameMode.ONLINE]: 'Play online - Connect with another player'
     };
     return modeDescriptions[gameMode];
   }

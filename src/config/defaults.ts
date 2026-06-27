@@ -7,11 +7,20 @@ import { Region, GameMode } from '../types/enums';
 import { UserSettings } from '../types/models';
 
 /**
+ * Backend API Configuration
+ */
+export const BACKEND_CONFIG = {
+  BASE_URL: 'http://26.101.130.210:5353',
+  GAME_SERVER_ENDPOINT: '/api/game/enter',
+  MATCHMAKING_ENDPOINT: '/api/matchmaking/find'
+};
+
+/**
  * Default user settings when the application starts
  */
 export const DEFAULT_USER_SETTINGS: UserSettings = {
   selectedRegion: Region.EU,
-  selectedGameMode: GameMode.SQUAD,
+  selectedGameMode: GameMode.SOLO,
   playerNickname: 'Player'
 };
 
@@ -51,9 +60,7 @@ export const STORAGE_KEYS = {
  */
 export const PLAYER_COUNT_BY_MODE = {
   SOLO: 1,
-  DUO: 2,
-  SQUAD: 4,
-  CUSTOM: 8
+  ONLINE: 2
 };
 
 /**
@@ -67,3 +74,11 @@ export const MAP_NAMES = [
   'Desert Oasis',
   'Neon District'
 ];
+
+/**
+ * Mode images/icons
+ */
+export const MODE_IMAGES = {
+  SOLO: 'https://via.placeholder.com/200/00d4ff/000?text=SOLO',
+  ONLINE: 'https://via.placeholder.com/200/00ff88/000?text=ONLINE'
+};

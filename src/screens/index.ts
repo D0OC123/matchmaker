@@ -7,3 +7,4 @@ export { MatchmakerScreen } from './MatchmakerScreen';
 export { QueueScreen } from './QueueScreen';
 export { MatchFoundScreen } from './MatchFoundScreen';
 export { CountdownScreen } from './CountdownScreen';
+export { LoadingScreen } from './LoadingScreen';

@@ -88,17 +88,17 @@ npm run dev
 
 ### Running the Application
 
-1. Build the TypeScript:
-   ```bash
-   npm run build
-   ```
+**⚡ Easiest Way:**
+1. **Double-click** `start.bat` in the Matchmaker folder
+2. Server starts automatically on `http://26.101.130.210:5353`
 
-2. Open `index.html` in a web browser or serve via HTTP server:
-   ```bash
-   npm run serve
-   ```
+**Or use command line:**
+```bash
+npm run build
+http-server dist -p 5353
+```
 
-3. Navigate to `http://localhost:8080`
+Then open `http://26.101.130.210:5353` in your browser (VPN required)
 
 ## Usage
 

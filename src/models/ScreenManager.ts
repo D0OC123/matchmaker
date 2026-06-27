@@ -8,7 +8,8 @@ import {
   MatchmakerScreen,
   QueueScreen,
   MatchFoundScreen,
-  CountdownScreen
+  CountdownScreen,
+  LoadingScreen
 } from '../screens/index';
 
 /**

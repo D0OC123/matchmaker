@@ -3,11 +3,70 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>OGFN Matchmaker - Version 27.11</title>
-  <link rel="stylesheet" href="src/assets/styles.css">
+  <title>OGFN Matchmaker - Backend API</title>
 </head>
-<body>
-  <div id="app" class="app-container"></div>
-  <script type="module" src="dist/index.js"></script>
+<body style="font-family: Arial, sans-serif; background: #1a1a2e; color: #e0e0e0; padding: 40px; margin: 0;">
+  <div style="max-width: 800px; margin: 0 auto;">
+    <h1 style="color: #00d4ff; text-align: center;">🎮 OGFN Matchmaker API v27.11</h1>
+    
+    <div style="background: #16213e; border: 1px solid #00d4ff; border-radius: 8px; padding: 20px; margin: 20px 0;">
+      <h2 style="color: #00ff88;">✅ Backend Service Running</h2>
+      <p style="font-size: 18px; color: #a0a0a0;">
+        The Matchmaker backend is running and ready for integration.
+      </p>
+    </div>
+
+    <div style="background: #16213e; border: 1px solid #00d4ff; border-radius: 8px; padding: 20px; margin: 20px 0;">
+      <h3 style="color: #00d4ff;">📡 API Endpoints</h3>
+      <p style="color: #a0a0a0;"><strong>Health Check:</strong></p>
+      <code style="background: #0f3460; padding: 10px; border-radius: 4px; display: block; color: #00ff88;">GET /</code>
+      
+      <p style="color: #a0a0a0; margin-top: 15px;"><strong>Enter Game:</strong></p>
+      <code style="background: #0f3460; padding: 10px; border-radius: 4px; display: block; color: #00ff88;">POST /api/game/enter</code>
+      <code style="background: #0f3460; padding: 10px; border-radius: 4px; display: block; color: #00ff88; margin-top: 5px;">GET /game?mode=SOLO&region=EU&player=PlayerName</code>
+    </div>
+
+    <div style="background: #16213e; border: 1px solid #00d4ff; border-radius: 8px; padding: 20px; margin: 20px 0;">
+      <h3 style="color: #00d4ff;">🎯 Game Modes</h3>
+      <ul style="color: #a0a0a0; list-style: none; padding: 0;">
+        <li>• <strong style="color: #00ff88;">SOLO</strong> - Single player</li>
+        <li>• <strong style="color: #00ff88;">ONLINE</strong> - Two players</li>
+      </ul>
+    </div>
+
+    <div style="background: #16213e; border: 1px solid #00d4ff; border-radius: 8px; padding: 20px; margin: 20px 0;">
+      <h3 style="color: #00d4ff;">🌍 Regions</h3>
+      <ul style="color: #a0a0a0; list-style: none; padding: 0;">
+        <li>• NA_EAST - North America East</li>
+        <li>• NA_WEST - North America West</li>
+        <li>• EU - Europe</li>
+        <li>• ASIA_PACIFIC - Asia Pacific</li>
+        <li>• SOUTH_AMERICA - South America</li>
+        <li>• MIDDLE_EAST - Middle East</li>
+      </ul>
+    </div>
+
+    <div style="background: #16213e; border: 1px solid #ffbb00; border-radius: 8px; padding: 20px; margin: 20px 0;">
+      <h3 style="color: #ffbb00;">📝 Example Request</h3>
+      <code style="background: #0f3460; padding: 10px; border-radius: 4px; display: block; color: #00d4ff; font-size: 14px;">
+curl -X POST http://26.101.130.210:5353/api/game/enter \<br/>
+  -H "Content-Type: application/json" \<br/>
+  -d '{"mode":"SOLO","region":"EU","player":"Player1"}'
+      </code>
+    </div>
+
+    <div style="background: #16213e; border: 1px solid #00ff88; border-radius: 8px; padding: 20px; margin: 20px 0;">
+      <h3 style="color: #00ff88;">🔗 Direct URL Access</h3>
+      <code style="background: #0f3460; padding: 10px; border-radius: 4px; display: block; color: #00d4ff; font-size: 14px;">
+http://26.101.130.210:5353/game?mode=SOLO&region=EU&player=Player1
+      </code>
+    </div>
+
+    <div style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #00d4ff; color: #a0a0a0;">
+      <p>OGFN Matchmaker v27.11 | Backend API Service</p>
+      <p style="font-size: 12px; color: #666;">For full documentation, see API.md</p>
+    </div>
+  </div>
 </body>
 </html>
+

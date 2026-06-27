@@ -12,8 +12,7 @@ import {
   MatchFoundScreen,
   CountdownScreen
 } from '../screens/index';
-import { QueueState, EventType } from '../types/index';
-import { COUNTDOWN_CONFIG } from '../config/defaults';
+import { COUNTDOWN_CONFIG, BACKEND_CONFIG } from '../config/defaults';
 
 /**
  * ApplicationController class - Main application flow orchestrator
@@ -63,118 +62,23 @@ export class ApplicationController {
     this.matchmakerScreen.onPlay(() => {
       this.handlePlayClick();
     });
-
-    // Queue screen - Cancel button
-    this.queueScreen.onCancel(() => {
-      this.handleCancelClick();
-    });
-
-    // Match found screen - Continue button
-    this.matchFoundScreen.onContinue(() => {
-      this.handleContinueClick();
-    });
-
-    // Countdown screen - Finish handler
-    this.countdownScreen.onCountdownFinish(() => {
-      this.handleCountdownFinish();
-    });
-
-    // Service events
-    this.matchmakerService.on(EventType.MATCH_FOUND, (event) => {
-      this.handleMatchFound(event);
-    });
-
-    this.matchmakerService.on(EventType.QUEUE_CANCELLED, () => {
-      this.handleQueueCancelled();
-    });
-
-    this.matchmakerService.on(EventType.COUNTDOWN_FINISHED, () => {
-      this.handleCountdownFinished();
-    });
   }
 
   /**
    * Handles play button click
-   * Starts the matchmaking queue
+   * Redirects directly to game server
    */
-  private async handlePlayClick(): Promise<void> {
-    this.matchmakerScreen.disable();
-    this.screenManager.showQueueScreen();
-
-    try {
-      await this.matchmakerService.startQueue();
-    } catch (error) {
-      console.error('Error starting queue:', error);
-      this.screenManager.showMatchmakerScreen();
-    }
-  }
-
-  /**
-   * Handles cancel button click
-   * Cancels the current queue search
-   */
-  private handleCancelClick(): void {
-    this.matchmakerService.cancelQueue();
-  }
-
-  /**
-   * Handles match found event
-   * Displays match information and transitions to match found screen
-   * @param event - Match found event
-   */
-  private handleMatchFound(event: { type: string; timestamp: Date; payload: Record<string, unknown> }): void {
-    const match = event.payload.match;
-    if (match) {
-      this.screenManager.showMatchFoundScreen();
-      this.matchFoundScreen.displayMatch(match as never);
-    }
-  }
-
-  /**
-   * Handles continue button click from match found screen
-   * Starts the countdown before match entry
-   */
-  private async handleContinueClick(): Promise<void> {
-    this.matchFoundScreen.disable();
-    this.screenManager.showCountdownScreen();
-    this.countdownScreen.displayMatchInfo();
-
-    try {
-      await this.matchmakerService.startCountdown(COUNTDOWN_CONFIG.TOTAL_SECONDS);
-      this.countdownScreen.start();
-    } catch (error) {
-      console.error('Error starting countdown:', error);
-      this.screenManager.showMatchmakerScreen();
-    }
-  }
-
-  /**
-   * Handles countdown finish
-   * Match is about to start
-   */
-  private handleCountdownFinish(): void {
-    // In a real application, this would launch the game
-    console.log('Match starting - would launch game here');
+  private handlePlayClick(): void {
+    const state = this.matchmakerService.getState();
     
-    // Reset to matchmaker screen after brief delay
-    setTimeout(() => {
-      this.screenManager.showMatchmakerScreen();
-    }, 2000);
-  }
-
-  /**
-   * Handles queue cancelled event
-   * Returns to matchmaker screen
-   */
-  private handleQueueCancelled(): void {
-    this.screenManager.showMatchmakerScreen();
-  }
-
-  /**
-   * Handles countdown finished event
-   */
-  private handleCountdownFinished(): void {
-    // Handled by handleCountdownFinish
+    // Redirect directly to game server with parameters
+    const gameServerUrl = `${BACKEND_CONFIG.BASE_URL}/game?` +
+      `mode=${state.settings.selectedGameMode}&` +
+      `region=${state.settings.selectedRegion}&` +
+      `player=${state.settings.playerNickname}`;
+    
+    // Redirect to game
+    window.location.href = gameServerUrl;
   }
 
   /**

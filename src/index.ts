@@ -1,38 +1,29 @@
 /**
- * Main Entry Point - OGFN Matchmaker Application
- * Initializes and starts the complete matchmaking system
- * All logic is client-side with no backend dependencies
+ * OGFN Matchmaker API - Backend Only
+ * No UI - Pure API Service
+ * 
+ * Endpoints:
+ * GET  /health              - Health check
+ * POST /api/game/enter      - Player enters game
+ * GET  /api/match/find      - Find a match
  */
 
-import { ApplicationController } from './models/index';
+import { MatchmakerService } from './services/index';
+import { EventEmitter } from './services/index';
+import { Region, GameMode } from './types/index';
 
-/**
- * Application initialization function
- * Called when the DOM is ready
- */
-function initializeApplication(): void {
-  // Get or create main container
-  let container = document.getElementById('app');
-  if (!container) {
-    container = document.createElement('div');
-    container.id = 'app';
-    container.className = 'app-container';
-    document.body.appendChild(container);
-  }
+// Initialize service
+const eventEmitter = new EventEmitter();
+const matchmakerService = new MatchmakerService(eventEmitter);
 
-  // Create and start the application controller
-  const app = new ApplicationController(container as HTMLDivElement);
-  app.start();
+// Expose globally for backend access
+(globalThis as unknown as Record<string, unknown>).matchmakerService = matchmakerService;
+(globalThis as unknown as Record<string, unknown>).eventEmitter = eventEmitter;
 
-  // Store reference in window for debugging if needed
-  (window as unknown as Record<string, unknown>).matchmakerApp = app;
-}
+console.log('✅ OGFN Matchmaker API initialized');
+console.log('📡 Service ready for backend integration');
+console.log('🎮 Regions:', Object.values(Region));
+console.log('🎯 Modes:', Object.values(GameMode));
 
-/**
- * Wait for DOM to be fully loaded before initializing
- */
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initializeApplication);
-} else {
-  initializeApplication();
-}
+// Export for use in other modules
+export { matchmakerService, eventEmitter };

@@ -20,9 +20,7 @@ export enum Region {
  */
 export enum GameMode {
   SOLO = 'SOLO',
-  DUO = 'DUO',
-  SQUAD = 'SQUAD',
-  CUSTOM = 'CUSTOM'
+  ONLINE = 'ONLINE'
 }
 
 /**

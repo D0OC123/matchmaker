@@ -5,6 +5,7 @@
  */
 
 import type { MatchInfo } from '../types/index';
+import { MODE_IMAGES } from '../config/defaults';
 
 /**
  * MatchInfoDisplay class - Creates match information display UI
@@ -39,6 +40,16 @@ export class MatchInfoDisplay {
     const title = document.createElement('h2');
     title.textContent = 'Match Found!';
     this.element.appendChild(title);
+
+    // Mode Image
+    const imageSection = document.createElement('div');
+    imageSection.className = 'match-image-section';
+    const image = document.createElement('img');
+    image.src = MODE_IMAGES[match.gameMode as keyof typeof MODE_IMAGES] || '';
+    image.alt = `${match.gameMode} Mode`;
+    image.className = 'match-mode-image';
+    imageSection.appendChild(image);
+    this.element.appendChild(imageSection);
 
     // Match ID
     const idSection = this.createInfoSection('Match ID', match.matchId);
