@@ -1,222 +1,566 @@
-# 🎮 OGFN Matchmaker - Backend API
+# OGFN Matchmaker v27.11 - API Documentation
 
 ## Overview
 
-The Matchmaker runs as a **Backend Service** on port 5353. Clients connect via HTTP requests to:
+OGFN Matchmaker is a **WebSocket-based real-time matchmaking server** that handles player matchmaking for OGFN (Original Fortnite) v27.11 clients.
 
-```
-http://26.101.130.210:5353
-```
-
----
-
-## 📡 API Endpoints
-
-### 1. Health Check
-
-Check if the service is running.
-
-```
-GET /
-```
-
-**Response:** `200 OK`
-```
-Server is running
-```
+**Protocol**: WebSocket (ws://)  
+**Server URL**: `ws://26.101.130.210:5353`  
+**Based on**: [FortMatchmaker](https://github.com/Lawin0129/FortMatchmaker) architecture
 
 ---
 
-### 2. Game Entry
+## Connection
 
-Called when a player clicks **PLAY** on the frontend. Accepts the player into the game.
+### WebSocket Endpoint
 
 ```
-POST /api/game/enter
+ws://26.101.130.210:5353
 ```
 
-**Request Body:**
-```json
-{
-  "mode": "SOLO",
-  "region": "EU",
-  "player": "PlayerName"
-}
-```
-
-**Query Parameters:**
-```
-?mode=SOLO&region=EU&player=PlayerName
-```
-
-**Response:** `200 OK`
-```json
-{
-  "status": "success",
-  "message": "Player entered game",
-  "matchId": "MATCH_abc123",
-  "gameId": "GAME_xyz789"
-}
-```
-
----
-
-## 🔗 Frontend Integration
-
-### How Frontend Calls Backend
-
-When a player clicks **PLAY** on the Matchmaker UI:
-
-1. Frontend reads:
-   - Selected Game Mode (SOLO or ONLINE)
-   - Selected Region (EU, NA_EAST, etc.)
-   - Player Nickname
-
-2. Frontend redirects to:
-   ```
-   http://26.101.130.210:5353/game?mode=SOLO&region=EU&player=Player
-   ```
-
-3. Backend processes the request and:
-   - Creates or joins a match
-   - Assigns the player
-   - Launches the game
-
----
-
-## 🛠️ Usage Examples
-
-### cURL Examples
-
-#### Check Health
-```bash
-curl http://26.101.130.210:5353/
-```
-
-#### Enter Game
-```bash
-curl -X POST "http://26.101.130.210:5353/api/game/enter" \
-  -H "Content-Type: application/json" \
-  -d '{"mode": "SOLO", "region": "EU", "player": "Player1"}'
-```
-
-#### Redirect (Frontend Method)
-```
-http://26.101.130.210:5353/game?mode=SOLO&region=EU&player=Player1
-```
-
-### JavaScript Examples
+### Connection Example (JavaScript)
 
 ```javascript
-// Enter game via fetch
-fetch('http://26.101.130.210:5353/api/game/enter', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    mode: 'SOLO',
-    region: 'EU',
-    player: 'Player1'
-  })
-})
-.then(res => res.json())
-.then(data => console.log(data));
+const WebSocket = require('ws');
+const ws = new WebSocket('ws://26.101.130.210:5353');
+
+ws.on('open', () => {
+  console.log('Connected to OGFN Matchmaker');
+});
+
+ws.on('message', (data) => {
+  const message = JSON.parse(data);
+  console.log('Received:', message);
+});
+
+ws.on('close', () => {
+  console.log('Disconnected from matchmaker');
+});
+
+ws.on('error', (error) => {
+  console.error('Connection error:', error);
+});
+```
+
+### Connection Example (Browser)
+
+```javascript
+const ws = new WebSocket('ws://26.101.130.210:5353');
+
+ws.onopen = () => {
+  console.log('Connected to OGFN Matchmaker');
+};
+
+ws.onmessage = (event) => {
+  const message = JSON.parse(event.data);
+  console.log('Received:', message);
+  
+  if (message.name === 'Play') {
+    // Ready to join game
+    joinGame(message.payload.matchId, message.payload.sessionId);
+  }
+};
 ```
 
 ---
 
-## 📊 Game Modes
+## Message Protocol
 
-| Mode | Players | Description |
-|------|---------|-------------|
-| **SOLO** | 1 | Single player |
-| **ONLINE** | 2 | Two players |
+All messages are JSON formatted with this structure:
 
----
-
-## 🌍 Regions
-
-| Region | Code |
-|--------|------|
-| North America (East) | NA_EAST |
-| North America (West) | NA_WEST |
-| Europe | EU |
-| Asia Pacific | ASIA_PACIFIC |
-| South America | SOUTH_AMERICA |
-| Middle East | MIDDLE_EAST |
-
----
-
-## 🔄 Request/Response Flow
-
-```
-┌─────────────────────────────────────────┐
-│ Frontend: Matchmaker UI                 │
-│ User selects Mode + Region + clicks PLAY│
-└────────────┬────────────────────────────┘
-             │
-             ▼
-┌─────────────────────────────────────────┐
-│ Browser redirects to:                   │
-│ /game?mode=SOLO&region=EU&player=Player │
-└────────────┬────────────────────────────┘
-             │
-             ▼
-┌─────────────────────────────────────────┐
-│ Backend Service (Port 5353)             │
-│ - Receives request                      │
-│ - Validates parameters                  │
-│ - Creates match                         │
-│ - Enters player into game               │
-└────────────┬────────────────────────────┘
-             │
-             ▼
-┌─────────────────────────────────────────┐
-│ Game Server                             │
-│ Player is now in-game                   │
-└─────────────────────────────────────────┘
+```typescript
+{
+  "name": string,     // Message type: "StatusUpdate" or "Play"
+  "payload": object   // Message-specific data
+}
 ```
 
 ---
 
-## 🚀 Starting the Backend
+## Server Messages (Server → Client)
 
+The server sends 5 messages during the matchmaking flow:
+
+### 1. Connecting (200ms after connection)
+
+**Indicates**: Initial connection established
+
+```json
+{
+  "name": "StatusUpdate",
+  "payload": {
+    "state": "Connecting"
+  }
+}
+```
+
+---
+
+### 2. Waiting (1000ms after connection)
+
+**Indicates**: Waiting for other players to join
+
+```json
+{
+  "name": "StatusUpdate",
+  "payload": {
+    "totalPlayers": 1,
+    "connectedPlayers": 1,
+    "state": "Waiting"
+  }
+}
+```
+
+**Fields**:
+- `totalPlayers` (number): Expected number of players
+- `connectedPlayers` (number): Currently connected players
+- `state` (string): Always "Waiting"
+
+---
+
+### 3. Queued (2000ms after connection)
+
+**Indicates**: Player added to matchmaking queue
+
+```json
+{
+  "name": "StatusUpdate",
+  "payload": {
+    "ticketId": "abc123def456...",
+    "queuedPlayers": 0,
+    "estimatedWaitSec": 0,
+    "status": {},
+    "state": "Queued"
+  }
+}
+```
+
+**Fields**:
+- `ticketId` (string): Unique matchmaking ticket ID (MD5 hash)
+- `queuedPlayers` (number): Number of players ahead in queue
+- `estimatedWaitSec` (number): Estimated wait time in seconds
+- `status` (object): Additional status information
+- `state` (string): Always "Queued"
+
+---
+
+### 4. SessionAssignment (6000ms after connection)
+
+**Indicates**: Match found, assigning game session
+
+```json
+{
+  "name": "StatusUpdate",
+  "payload": {
+    "matchId": "def456ghi789...",
+    "state": "SessionAssignment"
+  }
+}
+```
+
+**Fields**:
+- `matchId` (string): Unique match ID (MD5 hash)
+- `state` (string): Always "SessionAssignment"
+
+---
+
+### 5. Play (8000ms after connection)
+
+**Indicates**: Ready to join game - **FINAL MESSAGE**
+
+```json
+{
+  "name": "Play",
+  "payload": {
+    "matchId": "def456ghi789...",
+    "sessionId": "ghi789jkl012...",
+    "joinDelaySec": 1
+  }
+}
+```
+
+**Fields**:
+- `matchId` (string): Unique match ID (MD5 hash)
+- `sessionId` (string): Unique session ID (MD5 hash)
+- `joinDelaySec` (number): Recommended delay before joining (seconds)
+
+**Action**: Client should close WebSocket and connect to game server with these IDs.
+
+---
+
+## Complete Flow Example
+
+```javascript
+const WebSocket = require('ws');
+
+class MatchmakerClient {
+  constructor() {
+    this.ws = null;
+    this.matchId = null;
+    this.sessionId = null;
+  }
+
+  connect() {
+    this.ws = new WebSocket('ws://26.101.130.210:5353');
+
+    this.ws.on('open', () => {
+      console.log('✅ Connected to matchmaker');
+    });
+
+    this.ws.on('message', (data) => {
+      const message = JSON.parse(data);
+      this.handleMessage(message);
+    });
+
+    this.ws.on('close', () => {
+      console.log('🔌 Disconnected from matchmaker');
+    });
+
+    this.ws.on('error', (error) => {
+      console.error('❌ Error:', error);
+    });
+  }
+
+  handleMessage(message) {
+    console.log(`📥 Received: ${message.name}`);
+
+    switch (message.name) {
+      case 'StatusUpdate':
+        this.handleStatusUpdate(message.payload);
+        break;
+      
+      case 'Play':
+        this.handlePlay(message.payload);
+        break;
+    }
+  }
+
+  handleStatusUpdate(payload) {
+    const state = payload.state;
+    
+    switch (state) {
+      case 'Connecting':
+        console.log('🔗 Connecting to matchmaker...');
+        break;
+      
+      case 'Waiting':
+        console.log(`⏳ Waiting for players (${payload.connectedPlayers}/${payload.totalPlayers})`);
+        break;
+      
+      case 'Queued':
+        console.log(`🎫 In queue (Ticket: ${payload.ticketId.substring(0, 8)}...)`);
+        console.log(`   Players ahead: ${payload.queuedPlayers}`);
+        console.log(`   Estimated wait: ${payload.estimatedWaitSec}s`);
+        break;
+      
+      case 'SessionAssignment':
+        console.log(`🎯 Match found! (ID: ${payload.matchId.substring(0, 8)}...)`);
+        this.matchId = payload.matchId;
+        break;
+    }
+  }
+
+  handlePlay(payload) {
+    this.matchId = payload.matchId;
+    this.sessionId = payload.sessionId;
+    
+    console.log('✅ Matchmaking complete!');
+    console.log(`   Match ID: ${this.matchId.substring(0, 16)}...`);
+    console.log(`   Session ID: ${this.sessionId.substring(0, 16)}...`);
+    console.log(`   Join delay: ${payload.joinDelaySec}s`);
+    
+    // Close matchmaker connection
+    this.ws.close();
+    
+    // Join game after delay
+    setTimeout(() => {
+      this.joinGame();
+    }, payload.joinDelaySec * 1000);
+  }
+
+  joinGame() {
+    console.log('🎮 Joining game...');
+    // Connect to game server with matchId and sessionId
+    // Implementation depends on game client
+  }
+}
+
+// Usage
+const client = new MatchmakerClient();
+client.connect();
+```
+
+---
+
+## Timing
+
+| Event | Time (ms) | Description |
+|-------|-----------|-------------|
+| **Connecting** | 200 | Connection acknowledgment |
+| **Waiting** | 1000 | Waiting for players |
+| **Queued** | 2000 | Added to queue |
+| **SessionAssignment** | 6000 | Match found |
+| **Play** | 8000 | Ready to join |
+
+**Total Time**: ~8 seconds from connection to game join
+
+---
+
+## Game Modes
+
+The server supports two game modes:
+
+| Mode | Description | Players |
+|------|-------------|---------|
+| **SOLO** | Single player | 1 |
+| **ONLINE** | Multiplayer | 2+ |
+
+**Note**: Game mode selection is not yet implemented in the connection protocol.
+
+---
+
+## Regions
+
+The server supports six regions:
+
+- **NA_EAST** - North America East
+- **NA_WEST** - North America West  
+- **EU** - Europe
+- **ASIA_PACIFIC** - Asia Pacific
+- **SOUTH_AMERICA** - South America
+- **MIDDLE_EAST** - Middle East
+
+**Note**: Region selection is not yet implemented in the connection protocol.
+
+---
+
+## Error Handling
+
+### XMPP Protocol Rejection
+
+Connections using the XMPP protocol are automatically rejected:
+
+```javascript
+// Server will close connection if XMPP protocol is detected
+ws.close();
+```
+
+### Connection Timeout
+
+If no messages are received within 10 seconds after "Play", the client should:
+1. Close the WebSocket connection
+2. Retry matchmaking from the beginning
+
+### Message Parsing Errors
+
+Always wrap JSON parsing in try-catch:
+
+```javascript
+ws.on('message', (data) => {
+  try {
+    const message = JSON.parse(data);
+    handleMessage(message);
+  } catch (error) {
+    console.error('Failed to parse message:', error);
+  }
+});
+```
+
+---
+
+## Testing
+
+### Using wscat (CLI Tool)
+
+Install wscat:
 ```bash
-# Run the BAT file (Windows)
-start.bat
-
-# Or use PowerShell
-.\start.ps1
+npm install -g wscat
 ```
 
-This will:
-1. Install dependencies
-2. Build the TypeScript code
-3. Start the HTTP server on port 5353
-4. Keep running as a backend service
+Connect to matchmaker:
+```bash
+wscat -c ws://26.101.130.210:5353
+```
+
+Expected output:
+```
+Connected (press CTRL+C to quit)
+< {"name":"StatusUpdate","payload":{"state":"Connecting"}}
+< {"name":"StatusUpdate","payload":{"totalPlayers":1,"connectedPlayers":1,"state":"Waiting"}}
+< {"name":"StatusUpdate","payload":{"ticketId":"abc...","queuedPlayers":0,"estimatedWaitSec":0,"status":{},"state":"Queued"}}
+< {"name":"StatusUpdate","payload":{"matchId":"def...","state":"SessionAssignment"}}
+< {"name":"Play","payload":{"matchId":"def...","sessionId":"ghi...","joinDelaySec":1}}
+```
 
 ---
 
-## 📝 Notes
+## Status Codes
 
-- The service runs as a **static file server** serving compiled JavaScript
-- No database required (all in-memory)
-- Stateless service (each request is independent)
-- CORS is disabled by default
-- Cache is set to 3600 seconds
+The server uses standard WebSocket status codes:
 
----
-
-## 🔐 Security Considerations
-
-⚠️ **This is a development service!** For production:
-- Add authentication/authorization
-- Enable CORS properly
-- Use HTTPS
-- Implement rate limiting
-- Add request validation
-- Use environment variables for configuration
+| Code | Description |
+|------|-------------|
+| **1000** | Normal closure |
+| **1001** | Going away (server shutdown) |
+| **1002** | Protocol error |
+| **1011** | Server error |
 
 ---
 
-**Version:** 27.11.0  
-**Last Updated:** June 27, 2026
+## Best Practices
+
+### 1. Handle All Message Types
+
+Always handle both `StatusUpdate` and `Play` messages:
+
+```javascript
+ws.on('message', (data) => {
+  const message = JSON.parse(data);
+  
+  if (message.name === 'StatusUpdate') {
+    // Handle status updates
+  } else if (message.name === 'Play') {
+    // Ready to join game
+  }
+});
+```
+
+### 2. Close Connection After "Play"
+
+After receiving the "Play" message, close the WebSocket connection:
+
+```javascript
+if (message.name === 'Play') {
+  ws.close();
+  // Proceed to join game
+}
+```
+
+### 3. Implement Reconnection Logic
+
+If connection fails, retry after a delay:
+
+```javascript
+function connectWithRetry(maxRetries = 3, delay = 2000) {
+  let retries = 0;
+  
+  function connect() {
+    const ws = new WebSocket('ws://26.101.130.210:5353');
+    
+    ws.on('error', (error) => {
+      if (retries < maxRetries) {
+        retries++;
+        console.log(`Retrying connection (${retries}/${maxRetries})...`);
+        setTimeout(connect, delay);
+      } else {
+        console.error('Max retries reached');
+      }
+    });
+  }
+  
+  connect();
+}
+```
+
+---
+
+## Security
+
+### VPN Required
+
+The server binds to VPN IP `26.101.130.210`. Ensure your client:
+1. Is connected to the VPN
+2. Can reach IP `26.101.130.210` on port `5353`
+
+### No Authentication
+
+**⚠️ Warning**: The current implementation has no authentication. Anyone with access to the VPN can connect.
+
+Future versions should implement:
+- Token-based authentication
+- Rate limiting
+- Session validation
+
+---
+
+## Troubleshooting
+
+### Cannot Connect
+
+**Check**:
+1. VPN is connected
+2. Server is running (`npm start`)
+3. Firewall allows port 5353
+4. IP `26.101.130.210` is reachable
+
+**Test connectivity**:
+```bash
+ping 26.101.130.210
+telnet 26.101.130.210 5353
+```
+
+### Connection Immediately Closes
+
+**Possible causes**:
+1. Using XMPP protocol (not supported)
+2. Server error
+3. Port blocked by firewall
+
+**Check server logs** for error messages.
+
+### No Messages Received
+
+**Check**:
+1. WebSocket connection is open
+2. Message handler is registered
+3. JSON parsing is not failing
+
+**Enable debug logging**:
+```javascript
+ws.on('message', (data) => {
+  console.log('Raw message:', data.toString());
+  const message = JSON.parse(data);
+  console.log('Parsed message:', message);
+});
+```
+
+---
+
+## Changelog
+
+### v27.11.0 (Current)
+- ✅ WebSocket server implementation
+- ✅ 5-stage matchmaking flow
+- ✅ Unique ID generation (ticket, match, session)
+- ✅ XMPP protocol filtering
+- ✅ Comprehensive logging
+- ✅ TypeScript implementation
+
+### Future Versions
+- Game mode selection from client
+- Region selection from client
+- Authentication system
+- Real player queue management
+- Skill-based matchmaking
+
+---
+
+## Support
+
+For issues or questions, refer to:
+- [README.md](README.md) - Getting started guide
+- [ARCHITECTURE.md](ARCHITECTURE.md) - Technical architecture
+- [GitHub Issues](https://github.com/D0OC123/matchmaker/issues)
+
+---
+
+## License
+
+MIT License - See LICENSE file
+
+---
+
+**Server Version**: v27.11.0  
+**Protocol**: WebSocket (ws://)  
+**Port**: 5353  
+**Host**: 26.101.130.210

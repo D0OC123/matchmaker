@@ -1,816 +1,581 @@
-# 📋 OGFN Matchmaker v27.11 - תיאור ארכיטקטורה מלא
+# OGFN Matchmaker v27.11 - Architecture Documentation
 
-## 🎯 סקירה כללית
+## System Overview
 
-מערכת Matchmaker של OGFN 27.11 היא יישום ממלא כל הצדקה עבור ממשק חיפוש משחק. המערכת מופעלת **100% בצד הקליינט** - אין שום Backend, אין Database, ואין APIs.
-
-### טכנולוגיות:
-- **TypeScript** - שפת תכנות עם type safety
-- **HTML5 DOM** - ממשק משתמש
-- **CSS3** - עיצוב וואנימציות
-- **Local Storage** - שמירת הגדרות מקומיות
+The OGFN Matchmaker is a **real-time WebSocket server** that handles matchmaking for OGFN (Original Fortnite) v27.11 clients. It provides a stateful, event-driven matchmaking flow that simulates the process of finding and joining game sessions.
 
 ---
 
-## 🏗️ מבנה הפרויקט
+## Technology Stack
 
-```
-src/
-├── assets/          # עיצוב ואנימציות CSS
-├── components/      # קומפוננטות UI שניתנות לשימוש חוזר
-├── config/          # קבועים וערכי ברירת מחדל
-├── models/          # לוגיקה עסקית וניהול מצב
-├── screens/         # מסכים בגודל מלא
-├── services/        # שירותי הליבה
-├── types/           # TypeScript interfaces ו-enums
-├── utils/           # פונקציות עזר כלליות
-└── index.ts         # נקודת כניסה
-```
+| Component | Technology | Version |
+|-----------|-----------|---------|
+| **Runtime** | Node.js | v18+ |
+| **Language** | TypeScript | v5.0 |
+| **WebSocket** | ws (WebSocket library) | v8.18 |
+| **Protocol** | WebSocket (ws://) | - |
+| **Hashing** | crypto (Node.js built-in) | - |
 
 ---
 
-## 🔄 זרימת הנתונים
+## Server Architecture
+
+### Core Components
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│ משתמש (לחיצה, בחירה, אינטראקציה)                        │
-└──────────────────┬──────────────────────────────────────┘
-                   │
-                   ▼
-┌─────────────────────────────────────────────────────────┐
-│ UI Components (Button, RegionSelector, וכו')           │
-└──────────────────┬──────────────────────────────────────┘
-                   │
-                   ▼
-┌─────────────────────────────────────────────────────────┐
-│ Screens (MatchmakerScreen, QueueScreen, וכו')          │
-└──────────────────┬──────────────────────────────────────┘
-                   │
-                   ▼
-┌─────────────────────────────────────────────────────────┐
-│ ApplicationController (קואורדינציה)                      │
-└──────────────────┬──────────────────────────────────────┘
-                   │
-                   ▼
-┌─────────────────────────────────────────────────────────┐
-│ MatchmakerService (לוגיקה ביזנס)                        │
-└──────────────────┬──────────────────────────────────────┘
-                   │
-        ┌──────────┼──────────┬──────────┐
-        │          │          │          │
-        ▼          ▼          ▼          ▼
-     Storage   Events      Simulation  State
+┌─────────────────────────────────────────┐
+│         WebSocket Server (ws)           │
+│         Port: 5353                      │
+│         Host: 26.101.130.210            │
+└─────────────────────────────────────────┘
+                    │
+                    ▼
+┌─────────────────────────────────────────┐
+│       Connection Handler                │
+│  - Protocol Validation (No XMPP)        │
+│  - ID Generation (ticket/match/session) │
+│  - Event Scheduling                     │
+└─────────────────────────────────────────┘
+                    │
+                    ▼
+┌─────────────────────────────────────────┐
+│       Matchmaking State Machine         │
+│  1. Connecting                          │
+│  2. Waiting                             │
+│  3. Queued                              │
+│  4. SessionAssignment                   │
+│  5. Play (Join)                         │
+└─────────────────────────────────────────┘
+                    │
+                    ▼
+┌─────────────────────────────────────────┐
+│          Client (OGFN Game)             │
+│  - Receives status updates              │
+│  - Joins game on "Play" message         │
+└─────────────────────────────────────────┘
 ```
 
 ---
 
-## 📦 קבצים עיקריים
+## Matchmaking Flow
 
-### **1️⃣ Types Layer** (`src/types/`)
-מגדירה את כל ה-TypeScript interfaces ו-enums.
+### State Transition Diagram
 
-#### `enums.ts` - קבועים וערכים קבועים
-```typescript
-GameMode: SOLO, DUO, SQUAD, CUSTOM
-Region: NA_EAST, NA_WEST, EU, ASIA_PACIFIC, SOUTH_AMERICA, MIDDLE_EAST
-QueueState: IDLE, SEARCHING, MATCH_FOUND, COUNTDOWN, CANCELLED
-EventType: QUEUE_STARTED, QUEUE_CANCELLED, MATCH_FOUND, וכו'
+```
+    [Client Connects]
+           │
+           ▼
+    ┌──────────────┐
+    │  Connecting  │ ◄──── 200ms after connection
+    └──────────────┘
+           │
+           ▼
+    ┌──────────────┐
+    │   Waiting    │ ◄──── 1000ms (waiting for players)
+    └──────────────┘
+           │
+           ▼
+    ┌──────────────┐
+    │    Queued    │ ◄──── 2000ms (in matchmaking queue)
+    └──────────────┘
+           │
+           ▼
+    ┌──────────────┐
+    │SessionAssign │ ◄──── 6000ms (match found)
+    └──────────────┘
+           │
+           ▼
+    ┌──────────────┐
+    │     Play     │ ◄──── 8000ms (ready to join)
+    └──────────────┘
+           │
+           ▼
+    [Client Joins Game]
 ```
 
-#### `models.ts` - ממשקים (Interfaces)
+### Timing Configuration
+
+All timings are configurable in `src/index.ts`:
+
 ```typescript
-UserSettings - הגדרות המשתמש
-MatchmakerState - מצב Matchmaker
-MatchInfo - פרטי המשחק שנמצא
-SystemEvent - אירוע במערכת
+const TIMING = {
+  CONNECTING: 200,          // Initial connection acknowledgment
+  WAITING: 1000,            // Waiting for additional players
+  QUEUED: 2000,             // Placed in matchmaking queue
+  SESSION_ASSIGNMENT: 6000, // Match found, assigning session
+  JOIN: 8000                // Final message to join game
+};
 ```
 
-#### `events.ts` - מערכת אירועים
-```typescript
-IEventEmitter - ממשק עבור Pub-Sub
-EventListener - סוג callback אירוע
-```
+**Total Matchmaking Time**: ~8 seconds from connection to game join
 
 ---
 
-### **2️⃣ Utils Layer** (`src/utils/`)
-פונקציות עזר כלליות.
+## WebSocket Protocol
 
-#### `random.ts` - יצירת ערכים אקראיים
-```
-getRandomInt()        - מספר אקראי בטווח
-getRandomWaitTime()   - זמן המתנה אקראי (3-15 שניות)
-generateMatchId()     - יצירת ID ייחודי למשחק
-generateTeamId()      - יצירת ID ייחודי לקבוצה
-getRandomElement()    - בחירה אקראית מערך
-```
+### Message Format
 
-#### `storage.ts` - Local Storage
-```
-saveToStorage()       - שמירה ב-localStorage
-getFromStorage()      - קריאה מ-localStorage
-removeFromStorage()   - מחיקה מ-localStorage
-clearStorage()        - ניקוי כל הנתונים
-```
+All messages use JSON with this structure:
 
-#### `time.ts` - עבודה עם זמן
-```
-formatTime()          - עיצוב MM:SS
-secondsToMs()         - שניות ל-מילישניות
-msToSeconds()         - מילישניות לשניות
-delay()               - Promise שחוכה (async/await)
-getCurrentTimestamp() - חותמת זמן כעת
-```
-
----
-
-### **3️⃣ Config Layer** (`src/config/`)
-
-#### `defaults.ts` - קבועים ותצורה
 ```typescript
-DEFAULT_USER_SETTINGS - הגדרות ברירת מחדל
-WAIT_TIME_CONFIG - טווח זמני המתנה
-COUNTDOWN_CONFIG - משך ספירה לאחור
-STORAGE_KEYS - מפתחות localStorage
-PLAYER_COUNT_BY_MODE - מספר שחקנים לכל מוד
-MAP_NAMES - שמות מפות אפשריים
-```
-
----
-
-### **4️⃣ Services Layer** (`src/services/`)
-שירותי הליבה של המערכת.
-
-#### `EventEmitter.ts` - מערכת אירועים
-**מטרה:** ניהול תקשורת בין חלקים שונים של האפליקציה
-```typescript
-- שימוש ב-Pub-Sub Pattern (Publisher-Subscriber)
-- אחסון listeners במפה על פי EventType
-- emit() שולח אירוע לכל ה-listeners רשומים
-- on() רישום listener
-- off() ביטול רישום listener
-```
-
-**דוגמה שימוש:**
-```typescript
-eventEmitter.on(EventType.MATCH_FOUND, (event) => {
-  console.log('מצאו מתאם!', event);
-});
-
-eventEmitter.emit({
-  type: EventType.MATCH_FOUND,
-  timestamp: new Date(),
-  payload: { match: matchData }
-});
-```
-
-#### `StorageService.ts` - שמירת הגדרות
-**מטרה:** הנצחה של בחירות המשתמש
-```typescript
-- saveUserSettings() - שמירת כל ההגדרות
-- loadUserSettings() - טעינה עם fallback לברירות מחדל
-- getLastRegion() - קריאת האזור האחרון
-- getLastGameMode() - קריאת המוד האחרון
-- clearAllSettings() - ניקוי כל ההגדרות
-```
-
-**מה שמור:**
-- האזור הנבחר
-- מוד המשחק הנבחר
-- שם השחקן
-
-#### `MatchSimulationService.ts` - סימולציה של Backend
-**מטרה:** הדמיית התנהגות backend חיפוש משחקים
-```typescript
-simulateMatchSearch() - חיכוי אקראי (3-15 שניות)
-generateMatch() - יצירת נתוני משחק אקראיים
-generateMatchDetails() - יצירת פרטי משחק
-getGameModeInfo() - תיאור המוד
-simulateMatchStart() - הדמיית עיכוב הפעלת משחק
-```
-
-**מה יוצרים:**
-```
-- matchId ייחודי
-- בחירת מפה אקראית
-- הקצאת שחקנים לקבוצות
-- תפקידים בקבוצות
-```
-
-#### `MatchmakerService.ts` - מוח המערכת
-**מטרה:** תיאום כל זרימת ה-matchmaking
-```typescript
-getState()            - קריאת מצב נוכחי
-updateSettings()      - שינוי הגדרות
-startQueue()          - התחלת חיפוש
-cancelQueue()         - ביטול חיפוש
-startCountdown()      - התחלת ספירה לאחור
-selectRegion()        - בחירת אזור
-selectGameMode()      - בחירת מוד
-setPlayerNickname()   - עדכון שם השחקן
-cleanup()             - ניקוי משאבים
-```
-
-**Flow:**
-```
-1. startQueue() → מתחילים חיפוש
-2. simulateMatchSearch() → חוכים אקראית
-3. generateMatch() → יוצרים נתוני משחק
-4. emit MATCH_FOUND → מודיעים למערכת
-5. startCountdown() → מתחילים ספירה לאחור
-6. emit COUNTDOWN_FINISHED → משחק מתחיל
-```
-
----
-
-### **5️⃣ Components Layer** (`src/components/`)
-קומפוננטות UI שניתנות לשימוש חוזר.
-
-#### `Button.ts` - כפתור בסיסי
-```typescript
-- setText() - שינוי טקסט הכפתור
-- onClick() - רישום handler click
-- enable/disable() - הפעלה/השבתה
-- show/hide() - הצגה/הסתרה
-```
-
-#### `RegionSelector.ts` - בחירת אזור
-```typescript
-- קומפוננטה עם radio buttons
-- 6 אזורים זמינים
-- onChange() - callback בעת שינוי
-- updateSelection() - עדכון התצוגה
-```
-
-#### `GameModeSelector.ts` - בחירת מוד
-```typescript
-- קומפוננטה עם radio buttons
-- 4 מודים זמינים
-- onChange() - callback בעת שינוי
-```
-
-#### `LoadingAnimation.ts` - אנימציית חיפוש
-```typescript
-- Spinner מסתובב בעת חיפוש
-- start() - התחלת אנימציה
-- stop() - עצירת אנימציה
-- updateProgress() - עדכון הודעת התקדמות
-- שימוש ב-requestAnimationFrame לחלקות
-```
-
-#### `CountdownDisplay.ts` - תצוגת ספירה לאחור
-```typescript
-- הצגת מספר גדול של השניות
-- updateTime() - עדכון הזמן
-- pulse() - אפקט פולס בעת מספר נמוך
-- צבעים משתנים (ירוק → צהוב → אדום)
-```
-
-#### `MatchInfoDisplay.ts` - תצוגת פרטי משחק
-```typescript
-- הצגה של:
-  - Match ID
-  - Region
-  - Game Mode
-  - Map Name
-  - Teams
-  - Player Count
-- displayMatch() - עדכון התצוגה
-```
-
-#### `WaitingTimeDisplay.ts` - תצוגת זמן המתנה
-```typescript
-- מונה בזמן אמת
-- start() - התחלת ספירה
-- stop() - עצירת ספירה
-- getElapsedTime() - קריאת הזמן שחלף
-- עיצוב MM:SS
-```
-
----
-
-### **6️⃣ Screens Layer** (`src/screens/`)
-מסכים בגודל מלא לכל שלב.
-
-#### `MatchmakerScreen.ts` - מסך הגדרות
-**מה הוא מציג:**
-```
-┌──────────────────────────────┐
-│   OGFN Matchmaker            │
-├──────────────────────────────┤
-│   בחר אזור:                   │
-│   ○ NA East  ○ NA West       │
-│   ○ EU       ○ Asia Pacific  │
-│   ○ S.America ○ Middle East  │
-├──────────────────────────────┤
-│   בחר מוד:                    │
-│   ○ Solo     ○ Duo           │
-│   ○ Squad    ○ Custom        │
-├──────────────────────────────┤
-│         [ PLAY ]              │
-└──────────────────────────────┘
-```
-
-**קוד:**
-```typescript
-- RegionSelector component
-- GameModeSelector component
-- Play button
-- onPlay() - handler ללחיצה על Play
-```
-
-#### `QueueScreen.ts` - מסך חיפוש
-**מה הוא מציג:**
-```
-┌──────────────────────────────┐
-│   Searching for Match        │
-│   Mode: Squad | Region: EU   │
-├──────────────────────────────┤
-│      ⟲ ⟲ ⟲ (spinner)         │
-│   Searching for match...     │
-│   00:04 (wait time)          │
-├──────────────────────────────┤
-│       [ CANCEL ]             │
-└──────────────────────────────┘
-```
-
-**קוד:**
-```typescript
-- LoadingAnimation component
-- WaitingTimeDisplay component
-- Cancel button
-- onCancel() - handler ביטול
-```
-
-#### `MatchFoundScreen.ts` - מסך משחק נמצא
-**מה הוא מציג:**
-```
-┌──────────────────────────────┐
-│   Match Found!               │
-├──────────────────────────────┤
-│   Match ID: MATCH_ABC123     │
-│   Region: EU                 │
-│   Game Mode: Squad           │
-│   Map: Crystal Canyon        │
-│   Total Players: 4           │
-│                              │
-│   Teams:                     │
-│   • Team 1: 2 members        │
-│   • Team 2: 2 members        │
-├──────────────────────────────┤
-│  [ ACCEPT & CONTINUE ]       │
-└──────────────────────────────┘
-```
-
-**קוד:**
-```typescript
-- MatchInfoDisplay component
-- Continue button
-- onContinue() - handler המשך
-```
-
-#### `CountdownScreen.ts` - מסך ספירה לאחור
-**מה הוא מציג:**
-```
-┌──────────────────────────────┐
-│   Match Starting In          │
-│           10                 │
-│                              │
-│   Get ready!                 │
-│                              │
-│   Match Details (ברקע)       │
-└──────────────────────────────┘
-
-צבעים:
-- 10-6: ירוק (#00FF88)
-- 5-3: צהוב (#FFBB00)
-- 2-0: אדום (#FF4444)
-```
-
-**קוד:**
-```typescript
-- CountdownDisplay component
-- MatchInfoDisplay (ברקע עם opacity)
-- onCountdownFinish() - handler סיום
-```
-
----
-
-### **7️⃣ Models Layer** (`src/models/`)
-לוגיקה עסקית ותיאום גבוה.
-
-#### `ScreenManager.ts` - ניהול מסכים
-**מטרה:** שליטה בהחלפת מסכים
-```typescript
-showMatchmakerScreen()    - הצגת מסך הגדרות
-showQueueScreen()         - הצגת מסך חיפוש
-showMatchFoundScreen()    - הצגת מסך משחק נמצא
-showCountdownScreen()     - הצגת מסך ספירה לאחור
-getCurrentScreen()        - קריאת המסך הפעיל כרגע
-cleanup()                 - ניקוי משאבים
-```
-
-**כללי:**
-- רק מסך אחד פעיל בו זמנית
-- החלפה עם אנימציה
-- ניקוי משאבים של המסך הקודם
-
-#### `ApplicationController.ts` - מוח האפליקציה
-**מטרה:** תיאום כל המערכת
-```typescript
-- יצירת כל השירותים
-- יצירת כל המסכים
-- חיבור event handlers
-- ניהול Flow של המשחק
-```
-
-**Flow:**
-```
-1. משתמש לוחץ Play
-2. ApplicationController קורא ל-matchmakerService.startQueue()
-3. service מסמלץ חיפוש וקורא ל-generateMatch()
-4. service emits MATCH_FOUND
-5. ApplicationController מאזין ל-MATCH_FOUND ומחליף מסך
-6. משתמש לוחץ Continue
-7. service קורא startCountdown()
-8. countdown מתעדכן כל שנייה
-9. emit COUNTDOWN_FINISHED
-10. ApplicationController מחזיר למסך הגדרות
-```
-
----
-
-## 🔐 State Management
-
-### מצב Matchmaker:
-```typescript
-state = {
-  settings: {
-    selectedRegion: Region,      // האזור שנבחר
-    selectedGameMode: GameMode,  // המוד שנבחר
-    playerNickname: string       // שם השחקן
-  },
-  queueState: QueueState,        // מצב התור הנוכחי
-  waitingTime: number,           // זמן ההמתנה בשניות
-  matchInfo: MatchInfo | null,   // פרטי המשחק (אם נמצא)
-  countdownTime: number          // זמן ספירה לאחור
+interface MatchmakerMessage {
+  name: string;           // Message type: "StatusUpdate" or "Play"
+  payload: Record<string, unknown>; // Message-specific data
 }
 ```
 
-### Event System:
-```
-emit QUEUE_STARTED
-  ↓
-simulateMatchSearch()
-  ↓
-generateMatch()
-  ↓
-emit MATCH_FOUND
-  ↓
-startCountdown()
-  ↓
-updateCountdown() (כל שנייה)
-  ↓
-emit COUNTDOWN_FINISHED
-```
+### Message Types
 
----
+#### 1. StatusUpdate
 
-## 🎨 CSS Architecture
+Used for all intermediate matchmaking states.
 
-### Layers:
-```
-1. Reset & Defaults
-   - margin, padding, box-sizing
-   - font-family, colors
-   
-2. Layout
-   - app-container (flex, center)
-   - screens (position: absolute, animations)
-   
-3. Components
-   - buttons (primary, secondary states)
-   - forms (inputs, labels, selectors)
-   - animations (spinner, pulse, countdown)
-   
-4. Typography
-   - screen-title, screen-subtitle
-   - labels, values
-   
-5. Responsive
-   - Mobile breakpoints (480px, 768px)
-   - Touch-friendly sizes
-   
-6. Animations
-   - slideIn - חיובי מסך
-   - spin - spinner
-   - pulse - countdown בהיר
-```
-
-### Color Scheme:
-```
-Primary:   #00D4FF (Cyan)
-Success:   #00FF88 (Green)
-Warning:   #FFBB00 (Yellow)
-Danger:    #FF4444 (Red)
-Background: #1a1a2e (Dark Blue)
-Text:      #E0E0E0 (Light Gray)
-```
-
----
-
-## 🔄 וריאציות Modes
-
-### SOLO:
-- 1 שחקן לבדו
-- כל מטבח בעד עצמו
-- אין קבוצות
-
-### DUO:
-- 2 שחקנים
-- משחק בזוגות
-- קבוצה אחת או שתיים
-
-### SQUAD:
-- 4 שחקנים
-- משחק קבוצתי
-- קבוצה אחת בדרך כלל
-
-### CUSTOM:
-- עד 8 שחקנים
-- חוקים מיוחדים
-- גמישות מקסימלית
-
----
-
-## 💾 Local Storage
-
-נתונים השמורים בדפדפן:
-```
+**Structure:**
+```json
 {
-  "ogfn_matchmaker_settings": {
-    "selectedRegion": "EU",
-    "selectedGameMode": "SQUAD",
-    "playerNickname": "Player"
-  },
-  "ogfn_last_region": "EU",
-  "ogfn_last_game_mode": "SQUAD"
-}
-```
-
-הנתונים שמורים אוטומטית אחרי כל שינוי!
-
----
-
-## 🚀 זרימת ההפעלה
-
-### 1. טעינה ראשונית:
-```
-index.html טוען
-  ↓
-dist/index.js טוען
-  ↓
-ApplicationController יוצר
-  ↓
-EventEmitter נוצר
-  ↓
-MatchmakerService נוצר (טוען settings מ-localStorage)
-  ↓
-4 Screens נוצרים
-  ↓
-ScreenManager נוצר
-  ↓
-showMatchmakerScreen() מוצג
-```
-
-### 2. לחיצה על Play:
-```
-משתמש לוחץ Play
-  ↓
-matchmakerScreen.onPlay() נקרא
-  ↓
-ApplicationController.handlePlayClick()
-  ↓
-matchmakerService.startQueue() התחלה
-  ↓
-showQueueScreen() מוצג
-  ↓
-MatchSimulationService.simulateMatchSearch()
-  ↓
-LoadingAnimation מתחילה
-  ↓
-WaitingTimeDisplay מתחיל
-  ↓
-עיכוב אקראי (3-15 שניות)
-  ↓
-generateMatch() יוצר נתוני משחק
-  ↓
-emit MATCH_FOUND
-```
-
-### 3. Match Found:
-```
-MATCH_FOUND event received
-  ↓
-ApplicationController.handleMatchFound()
-  ↓
-showMatchFoundScreen() מוצג
-  ↓
-MatchInfoDisplay מציג פרטים
-  ↓
-משתמש לוחץ Continue
-  ↓
-startCountdown() התחלה
-```
-
-### 4. Countdown:
-```
-showCountdownScreen() מוצג
-  ↓
-CountdownDisplay מוצג (10)
-  ↓
-כל שנייה: countdownTime--
-  ↓
-צבע משתנה (ירוק → צהוב → אדום)
-  ↓
-pulse animation בשלוש שניות אחרונות
-  ↓
-emit COUNTDOWN_FINISHED
-  ↓
-setTimeout (2 seconds) מחכה
-  ↓
-showMatchmakerScreen() חוזר
-```
-
----
-
-## 🧪 איך המערכת עובדת בפרטים
-
-### דוגמה: משתמש בוחר Solo ממש בקליק Play
-
-```typescript
-// 1. משתמש לוחץ כפתור Play
-gameInitiation.onPlay(() => {
-  // 2. ApplicationController שומע
-  handlePlayClick() {
-    // 3. מחזיקה את מסך הגדרות
-    matchmakerScreen.disable();
-    
-    // 4. מחליפה למסך חיפוש
-    screenManager.showQueueScreen();
-    
-    // 5. מתחילה חיפוש משחק
-    await matchmakerService.startQueue();
-    
-    // 6. בתוך startQueue:
-    // 6a. emit QUEUE_STARTED
-    // 6b. simulateMatchSearch() - חוכה 3-15 שניות
-    // 6c. generateMatch() - יוצר משחק
-    // 6d. emit MATCH_FOUND
+  "name": "StatusUpdate",
+  "payload": {
+    "state": string,        // Current state
+    ...additionalFields     // State-specific data
   }
-});
+}
+```
 
-// 7. שומע על MATCH_FOUND
-matchmakerService.on(EventType.MATCH_FOUND, (event) => {
-  handleMatchFound(event); // מציג מסך MatchFound
-});
+#### 2. Play
+
+Final message instructing client to join the game.
+
+**Structure:**
+```json
+{
+  "name": "Play",
+  "payload": {
+    "matchId": string,      // Unique match identifier
+    "sessionId": string,    // Unique session identifier
+    "joinDelaySec": number  // Delay before joining (seconds)
+  }
+}
 ```
 
 ---
 
-## 📝 TypeScript Best Practices בקוד
+## Unique ID Generation
 
-### 1. Strong Typing:
+The server generates three unique identifiers for each matchmaking session:
+
+### Ticket ID
+- **Purpose**: Identifies the matchmaking request
+- **Format**: MD5 hash of `"ticket_" + timestamp + random`
+- **Used in**: Queued state
+
+### Match ID
+- **Purpose**: Identifies the found match/game session
+- **Format**: MD5 hash of `"match_" + timestamp + random`
+- **Used in**: SessionAssignment and Play states
+
+### Session ID
+- **Purpose**: Identifies the specific player session
+- **Format**: MD5 hash of `"session_" + timestamp + random`
+- **Used in**: Play state
+
+**Implementation:**
 ```typescript
-// ✅ טוב
-function startQueue(region: Region, mode: GameMode): Promise<void>
-
-// ❌ רע
-function startQueue(region: any, mode: any): Promise<any>
-```
-
-### 2. Interfaces:
-```typescript
-interface MatchInfo {
-  matchId: string;
-  region: Region;
-  gameMode: GameMode;
-  // ... עוד properties
+function createUniqueId(prefix: string): string {
+  return crypto
+    .createHash('md5')
+    .update(`${prefix}${Date.now()}${Math.random()}`)
+    .digest('hex');
 }
 ```
 
-### 3. Enums:
+---
+
+## Connection Lifecycle
+
+### 1. Connection Establishment
+
+```typescript
+wss.on('connection', async (ws: WebSocket, req) => {
+  // Extract client IP
+  const clientIp = req.socket.remoteAddress;
+  
+  // Validate protocol (reject XMPP)
+  const protocol = req.headers['sec-websocket-protocol'] || '';
+  if (protocol.toLowerCase().includes('xmpp')) {
+    ws.close();
+    return;
+  }
+  
+  // Generate unique IDs
+  const ticketId = createUniqueId('ticket_');
+  const matchId = createUniqueId('match_');
+  const sessionId = createUniqueId('session_');
+  
+  // Schedule status updates...
+});
+```
+
+### 2. Event Scheduling
+
+Five timed events are scheduled immediately upon connection:
+
+```typescript
+setTimeout(() => sendConnecting(ws), TIMING.CONNECTING);
+setTimeout(() => sendWaiting(ws), TIMING.WAITING);
+setTimeout(() => sendQueued(ws, ticketId), TIMING.QUEUED);
+setTimeout(() => sendSessionAssignment(ws, matchId), TIMING.SESSION_ASSIGNMENT);
+setTimeout(() => sendJoin(ws, matchId, sessionId), TIMING.JOIN);
+```
+
+### 3. Message Handlers
+
+The server registers handlers for:
+- **Incoming messages** from client (logged but not processed)
+- **Connection close** events
+- **Error** events
+
+### 4. Connection Termination
+
+After the "Play" message is sent, the client is expected to:
+1. Parse the `matchId` and `sessionId`
+2. Close the WebSocket connection
+3. Connect to the game server with the provided IDs
+
+---
+
+## Game Modes
+
+The server supports two game modes:
+
 ```typescript
 enum GameMode {
-  SOLO = 'SOLO',
-  DUO = 'DUO',
-  SQUAD = 'SQUAD',
-  CUSTOM = 'CUSTOM'
+  SOLO = 'SOLO',      // Single player
+  ONLINE = 'ONLINE'   // Multiplayer
 }
 ```
 
-### 4. Async/Await:
-```typescript
-async startQueue(): Promise<void> {
-  const waitTime = await MatchSimulationService.simulateMatchSearch();
-  const match = MatchSimulationService.generateMatch(...);
-  await this.startCountdown(10);
-}
-```
+**Note**: Game mode is currently not extracted from client requests. Future versions may parse mode from connection query parameters.
 
 ---
 
-## 🎯 תכנון טוב
+## Regional Servers
 
-### Separation of Concerns:
-- **Services** - עסקים
-- **Screens** - UI מקבוצות
-- **Components** - UI קטנים
-- **Models** - תיאום
-
-### DRY (Don't Repeat Yourself):
-- `Button` - משמש ב-3 מסכים שונים
-- `MatchInfoDisplay` - משמש ב-2 מסכים שונים
-
-### SOLID Principles:
-- **S** - כל class בעל אחריות אחת
-- **O** - פתוח לתוספות (עוד מודים, אזורים)
-- **I** - Interfaces נקיים
-- **L** - Liskov Substitution
-- **D** - Dependency Injection
-
----
-
-## 🔧 איך להוסיף תכונה חדשה
-
-### דוגמה: הוספת Ranked Mode
+The server supports six regions:
 
 ```typescript
-// 1. עדכן enums.ts
-export enum GameMode {
-  SOLO = 'SOLO',
-  DUO = 'DUO',
-  SQUAD = 'SQUAD',
-  CUSTOM = 'CUSTOM',
-  RANKED = 'RANKED'  // ✨ חדש
+enum Region {
+  NA_EAST = 'NA_EAST',              // North America East
+  NA_WEST = 'NA_WEST',              // North America West
+  EU = 'EU',                        // Europe
+  ASIA_PACIFIC = 'ASIA_PACIFIC',    // Asia Pacific
+  SOUTH_AMERICA = 'SOUTH_AMERICA',  // South America
+  MIDDLE_EAST = 'MIDDLE_EAST'       // Middle East
 }
+```
 
-// 2. עדכן defaults.ts
-export const PLAYER_COUNT_BY_MODE = {
-  SOLO: 1,
-  DUO: 2,
-  SQUAD: 4,
-  CUSTOM: 8,
-  RANKED: 4  // ✨ חדש
-};
+**Note**: Region selection is not currently implemented in the connection handler. Future versions may route to different server instances based on region.
 
-// 3. GameModeSelector יתעדכן אוטומטית
+---
 
-// 4. המערכת כולה תתמוך בRanked!
+## Security Features
+
+### 1. XMPP Protocol Filtering
+
+XMPP (Extensible Messaging and Presence Protocol) connections are automatically rejected:
+
+```typescript
+const protocol = req.headers['sec-websocket-protocol'] || '';
+if (protocol.toLowerCase().includes('xmpp')) {
+  ws.close();
+  return;
+}
+```
+
+**Reason**: OGFN clients use standard WebSocket protocol, not XMPP. This prevents incompatible clients from connecting.
+
+### 2. IP Binding
+
+The server binds exclusively to the VPN IP address:
+
+```typescript
+const HOST = '26.101.130.210';
+```
+
+This ensures the server is only accessible through the configured VPN network.
+
+### 3. Unique Session Identifiers
+
+MD5 hashing with timestamp and random component prevents:
+- Session ID collisions
+- Predictable session IDs
+- Session hijacking attempts
+
+---
+
+## Logging System
+
+The server provides comprehensive logging for monitoring and debugging:
+
+### Connection Logs
+```
+🔌 New connection from: 192.168.1.100
+```
+
+### ID Generation Logs
+```
+🎫 Ticket ID: abc123...
+🎯 Match ID: def456...
+📋 Session ID: ghi789...
+```
+
+### Status Update Logs
+```
+📤 [abc123] → Connecting
+📤 [abc123] → Waiting (1/1 players)
+📤 [abc123] → Queued (0 waiting)
+📤 [abc123] → SessionAssignment (Match: def456)
+📤 [abc123] → Play (Session: ghi789)
+```
+
+### Completion Logs
+```
+✅ Matchmaking complete for ticket abc123
+```
+
+### Error Logs
+```
+❌ WebSocket error for ticket abc123: Connection reset
 ```
 
 ---
 
-## 🎓 מה ללמוד מהקוד הזה
+## Scalability Considerations
 
-1. **Architecture** - Layered Architecture
-2. **Design Patterns** - Pub-Sub, Singleton, Factory
-3. **TypeScript** - Interfaces, Enums, Type Safety
-4. **Async Programming** - Promises, Async/Await
-5. **DOM Manipulation** - Native JavaScript
-6. **CSS** - Flexbox, Grid, Animations
-7. **State Management** - Manual State vs Events
+### Current Limitations
 
----
+1. **Single Server Instance**: No load balancing or horizontal scaling
+2. **No Database**: Session data not persisted
+3. **No Match Queuing**: Players are immediately matched (simulated)
+4. **No Cross-Region Routing**: All regions handled by single server
 
-## 📊 קומפלקסיות
+### Future Improvements
 
-```
-⏱️ Performance: מהיר מאד (no network delays)
-💾 Memory: נמוך (רק ממשק משתמש)
-🔌 Connectivity: 0 requirements
-🏃 Response: instant (no async backend)
-```
+1. **Redis Integration**: Store active sessions and queue state
+2. **Load Balancer**: Distribute connections across multiple instances
+3. **Region-Specific Servers**: Deploy separate servers per region
+4. **Real Match Logic**: Implement skill-based matchmaking (MMR/ELO)
+5. **Player Pool Management**: Queue multiple players and form real matches
 
 ---
 
-## ✨ סיכום
+## Error Handling
 
-מערכת זו היא דוגמה מעולה של:
-- ✅ TypeScript חזק
-- ✅ Architecture ברור
-- ✅ Separation of Concerns
-- ✅ Responsive Design
-- ✅ Client-side בלבד
-- ✅ No external dependencies
-- ✅ Fully functional UI
+### Server Errors
 
-**בקלות, אפשר להוסיף:**
-- Backend API integration
-- Real database
-- Multiplayer logic
-- Ranking system
-- Seasons & Passes
-- Cosmetics & Skins
+```typescript
+wss.on('error', (error) => {
+  console.error('❌ WebSocket Server Error:', error.message);
+});
+```
 
-הקוד מוכן לגדול! 🚀
+### Connection Errors
+
+```typescript
+ws.on('error', (error) => {
+  console.error(`❌ WebSocket error for ticket ${ticketId}:`, error.message);
+});
+```
+
+### Graceful Shutdown
+
+```typescript
+process.on('SIGINT', () => {
+  wss.close(() => {
+    console.log('✅ Server closed gracefully');
+    process.exit(0);
+  });
+});
+```
+
+---
+
+## Development Workflow
+
+### 1. Development Mode
+
+```bash
+npm run dev
+```
+
+Watches TypeScript files and rebuilds on changes (does not restart server).
+
+### 2. Build Production
+
+```bash
+npm run build
+```
+
+Compiles TypeScript to JavaScript in `dist/` folder.
+
+### 3. Start Server
+
+```bash
+npm start
+```
+
+Runs the compiled JavaScript server.
+
+---
+
+## Testing
+
+### Manual Testing with wscat
+
+Install wscat (WebSocket CLI client):
+```bash
+npm install -g wscat
+```
+
+Connect to the matchmaker:
+```bash
+wscat -c ws://26.101.130.210:5353
+```
+
+Expected output:
+```json
+{"name":"StatusUpdate","payload":{"state":"Connecting"}}
+{"name":"StatusUpdate","payload":{"totalPlayers":1,"connectedPlayers":1,"state":"Waiting"}}
+{"name":"StatusUpdate","payload":{"ticketId":"abc...","queuedPlayers":0,"estimatedWaitSec":0,"status":{},"state":"Queued"}}
+{"name":"StatusUpdate","payload":{"matchId":"def...","state":"SessionAssignment"}}
+{"name":"Play","payload":{"matchId":"def...","sessionId":"ghi...","joinDelaySec":1}}
+```
+
+### Testing with JavaScript Client
+
+```javascript
+const WebSocket = require('ws');
+const ws = new WebSocket('ws://26.101.130.210:5353');
+
+ws.on('open', () => {
+  console.log('Connected to matchmaker');
+});
+
+ws.on('message', (data) => {
+  const msg = JSON.parse(data);
+  console.log(`Received: ${msg.name}`, msg.payload);
+  
+  if (msg.name === 'Play') {
+    console.log('Matchmaking complete!');
+    console.log('Match ID:', msg.payload.matchId);
+    console.log('Session ID:', msg.payload.sessionId);
+    ws.close();
+  }
+});
+```
+
+---
+
+## Configuration Files
+
+### package.json
+
+```json
+{
+  "name": "ogfn-matchmaker",
+  "version": "27.11.0",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/ws": "^8.5.12",
+    "typescript": "^5.0.0"
+  }
+}
+```
+
+### tsconfig.json
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": true,
+    "esModuleInterop": true
+  }
+}
+```
+
+---
+
+## Comparison with FortMatchmaker
+
+| Feature | FortMatchmaker | OGFN Matchmaker v27.11 |
+|---------|----------------|------------------------|
+| **Language** | JavaScript | TypeScript |
+| **Type Safety** | ❌ No | ✅ Yes |
+| **Port** | 80 | 5353 |
+| **Host Binding** | All interfaces (0.0.0.0) | Specific IP (26.101.130.210) |
+| **Game Modes** | Not specified | SOLO, ONLINE |
+| **Regions** | Not specified | 6 regions defined |
+| **Documentation** | Basic README | Comprehensive docs |
+| **Logging** | Minimal | Detailed with emojis |
+| **Error Handling** | Basic | Comprehensive |
+
+---
+
+## Future Roadmap
+
+### Phase 1: Core Functionality ✅
+- [x] WebSocket server implementation
+- [x] Matchmaking state machine
+- [x] Unique ID generation
+- [x] XMPP filtering
+- [x] Comprehensive logging
+
+### Phase 2: Enhanced Features (Planned)
+- [ ] Parse game mode from client request
+- [ ] Parse region from client request
+- [ ] Real player queue management
+- [ ] Skill-based matchmaking (MMR)
+- [ ] Session persistence (Redis)
+
+### Phase 3: Scalability (Future)
+- [ ] Horizontal scaling support
+- [ ] Load balancing
+- [ ] Region-specific server routing
+- [ ] Database integration
+- [ ] Monitoring dashboard
+
+---
+
+## Contributing
+
+To contribute to this project:
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Build and test locally
+5. Submit a pull request
+
+---
+
+## License
+
+MIT License - See LICENSE file for details.
+
+---
+
+**Last Updated**: 2026-06-30  
+**Version**: 27.11.0  
+**Author**: OGFN Community

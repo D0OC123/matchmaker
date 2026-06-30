@@ -1,9 +1,10 @@
-# OGFN Matchmaker - Backend Service
-# This script runs the matchmaker as a backend API service
+# OGFN Matchmaker v27.11 - WebSocket Server Startup Script
+# PowerShell version
 
-Write-Host ""
+$host.UI.RawUI.WindowTitle = "OGFN Matchmaker v27.11 - WebSocket Server"
+
 Write-Host "============================================" -ForegroundColor Cyan
-Write-Host "  OGFN Matchmaker v27.11 - Backend Service" -ForegroundColor Cyan
+Write-Host "   OGFN Matchmaker v27.11 - Startup" -ForegroundColor Cyan
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -13,27 +14,35 @@ try {
     Write-Host "[OK] Node.js found: $nodeVersion" -ForegroundColor Green
 } catch {
     Write-Host "[ERROR] Node.js is not installed!" -ForegroundColor Red
-    Write-Host "Please install Node.js from https://nodejs.org/" -ForegroundColor Red
+    Write-Host "Please install Node.js from: https://nodejs.org/" -ForegroundColor Yellow
     Read-Host "Press Enter to exit"
     exit 1
 }
 
-Write-Host ""
+# Check if port 5353 is in use
+Write-Host "[INFO] Checking port 5353..." -ForegroundColor Yellow
+$port5353 = Get-NetTCPConnection -LocalPort 5353 -ErrorAction SilentlyContinue
+if ($port5353) {
+    Write-Host "[WARNING] Port 5353 is in use!" -ForegroundColor Yellow
+    Write-Host "[INFO] Attempting to free port..." -ForegroundColor Yellow
+    $port5353 | ForEach-Object {
+        Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue
+    }
+    Start-Sleep -Seconds 2
+}
 
-# Change to script directory
-Set-Location $PSScriptRoot
-
-# Check if node_modules exists
-if (!(Test-Path "node_modules")) {
+# Install dependencies if needed
+if (-not (Test-Path "node_modules")) {
     Write-Host "[INFO] Installing dependencies..." -ForegroundColor Yellow
     npm install
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "[ERROR] Failed to install dependencies" -ForegroundColor Red
+        Write-Host "[ERROR] Failed to install dependencies!" -ForegroundColor Red
         Read-Host "Press Enter to exit"
         exit 1
     }
     Write-Host "[OK] Dependencies installed" -ForegroundColor Green
-    Write-Host ""
+} else {
+    Write-Host "[OK] Dependencies found" -ForegroundColor Green
 }
 
 # Build TypeScript
@@ -45,39 +54,10 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 Write-Host "[OK] Build successful" -ForegroundColor Green
-Write-Host ""
 
-# Check if port 5353 is in use and kill it
-Write-Host "[INFO] Checking port 5353..." -ForegroundColor Yellow
-try {
-    $portProcess = Get-NetTCPConnection -LocalPort 5353 -ErrorAction SilentlyContinue
-    if ($portProcess) {
-        Write-Host "[INFO] Port 5353 is in use, freeing it..." -ForegroundColor Yellow
-        $pid = $portProcess.OwningProcess
-        Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue
-        Start-Sleep -Seconds 2
-    }
-} catch { }
-
-# Start the backend service
-Write-Host ""
+# Start WebSocket Server
+Write-Host "[INFO] Starting WebSocket Server..." -ForegroundColor Yellow
 Write-Host "============================================" -ForegroundColor Cyan
-Write-Host "  BACKEND SERVICE RUNNING" -ForegroundColor Green
-Write-Host "============================================" -ForegroundColor Cyan
-Write-Host ""
-Write-Host "Matchmaker API running on:" -ForegroundColor Green
-Write-Host "  http://26.101.130.210:5353" -ForegroundColor Green
-Write-Host ""
-Write-Host "Endpoints:" -ForegroundColor Yellow
-Write-Host "  GET  /                 - Health check" -ForegroundColor White
-Write-Host "  POST /api/game/enter   - Enter game (from frontend)" -ForegroundColor White
-Write-Host ""
-Write-Host "Press CTRL+C to stop the service" -ForegroundColor Yellow
-Write-Host "============================================" -ForegroundColor Cyan
-Write-Host ""
-
-http-server dist -p 5353 -a 26.101.130.210 -c-1
+npm start
 
 Read-Host "Press Enter to exit"
-
-

@@ -1,275 +1,338 @@
-# OGFN Matchmaker System v27.11
+# OGFN Matchmaker v27.11
 
-## Overview
+**Real-time WebSocket Matchmaking Server for OGFN (Original Fortnite)**
 
-A complete, fully client-side matchmaking system for OGFN (Open Game For None) built entirely in TypeScript. The system operates without any backend, database, or external APIs.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue.svg)](https://www.typescriptlang.org/)
+[![WebSocket](https://img.shields.io/badge/WebSocket-ws%208.18-green.svg)](https://github.com/websockets/ws)
 
-## Features
+---
 
-- ✅ **Pure TypeScript** - No JavaScript, 100% type-safe
-- ✅ **Client-Side Only** - No backend or database required
-- ✅ **Region Selection** - Multiple regions (NA East/West, EU, Asia Pacific, South America, Middle East)
-- ✅ **Game Modes** - Solo, Duo, Squad, and Custom modes
-- ✅ **Queue System** - Real-time queue with animated search
-- ✅ **Match Finding** - Simulated match discovery with realistic wait times
-- ✅ **Countdown Timer** - Pre-match countdown before entry
-- ✅ **Settings Persistence** - Stores preferences in local storage
-- ✅ **Responsive Design** - Works on desktop, tablet, and mobile
-- ✅ **Clean Architecture** - Modular, well-documented code
+## 📋 Overview
 
-## Project Structure
+OGFN Matchmaker is a real-time WebSocket server that provides matchmaking functionality for OGFN v27.11 clients. Based on the [FortMatchmaker](https://github.com/Lawin0129/FortMatchmaker) architecture, this TypeScript implementation handles player connections, queue management, and session assignments.
 
-```
-src/
-├── assets/          # CSS styles and visual assets
-├── components/      # Reusable UI components
-├── config/          # Configuration and constants
-├── models/          # Business logic orchestrators
-├── screens/         # Full-screen UI layouts
-├── services/        # Core business logic services
-├── types/           # TypeScript interfaces and enums
-├── utils/           # Utility functions
-└── index.ts         # Application entry point
+### Key Features
 
-Root Files:
-├── index.html       # Main HTML file
-├── package.json     # Dependencies and scripts
-└── tsconfig.json    # TypeScript configuration
-```
+✅ **Real-time WebSocket Communication** - Fast, bidirectional communication with game clients  
+✅ **Automatic Matchmaking Flow** - 5-stage matchmaking process (Connecting → Waiting → Queued → SessionAssignment → Play)  
+✅ **TypeScript Implementation** - Type-safe, maintainable codebase  
+✅ **Two Game Modes** - SOLO and ONLINE modes  
+✅ **Six Regional Servers** - NA_EAST, NA_WEST, EU, ASIA_PACIFIC, SOUTH_AMERICA, MIDDLE_EAST  
+✅ **XMPP Protocol Filter** - Automatically rejects XMPP connections  
+✅ **Unique Session IDs** - MD5-hashed ticket, match, and session identifiers  
 
-## Architecture
+---
 
-### Layers
-
-1. **Components** - Reusable UI elements (Button, RegionSelector, etc.)
-2. **Screens** - Full-screen views (MatchmakerScreen, QueueScreen, etc.)
-3. **Services** - Business logic (MatchmakerService, StorageService, etc.)
-4. **Models** - Application orchestrators (ApplicationController, ScreenManager)
-5. **Types** - Shared interfaces and enums
-
-### Data Flow
-
-```
-User Interaction
-    ↓
-UI Components / Screens
-    ↓
-ApplicationController
-    ↓
-MatchmakerService / Other Services
-    ↓
-EventEmitter (State Changes)
-    ↓
-UI Update
-```
-
-## Getting Started
+## 🚀 Quick Start
 
 ### Prerequisites
 
-- Node.js 16+ or higher
-- npm or yarn
+- **Node.js** v18.0.0 or higher ([Download](https://nodejs.org/))
+- **npm** (comes with Node.js)
+- **VPN** configured with IP: `26.101.130.210`
 
-### Installation
+### Installation & Startup
 
+#### Windows (BAT)
+```bash
+# Simply run the batch file
+start.bat
+```
+
+#### Windows (PowerShell)
+```powershell
+# Run PowerShell script
+.\start.ps1
+```
+
+#### Manual Startup
 ```bash
 # Install dependencies
 npm install
 
-# Build the project
+# Build TypeScript
 npm run build
 
-# Serve the application (requires http-server)
-npm run serve
-
-# Watch mode during development
-npm run dev
+# Start server
+npm start
 ```
 
-### Running the Application
-
-**⚡ Easiest Way:**
-1. **Double-click** `start.bat` in the Matchmaker folder
-2. Server starts automatically on `http://26.101.130.210:5353`
-
-**Or use command line:**
-```bash
-npm run build
-http-server dist -p 5353
+The server will start on:
 ```
-
-Then open `http://26.101.130.210:5353` in your browser (VPN required)
-
-## Usage
-
-### Main Flow
-
-1. **Matchmaker Screen** - Select region and game mode
-2. **Queue Screen** - Watch for match with animated search
-3. **Match Found Screen** - Review match details
-4. **Countdown Screen** - Wait for match to start
-5. **Reset** - Returns to Matchmaker screen after countdown
-
-### Settings Persistence
-
-All user settings (region and game mode) are automatically saved to browser local storage and restored on page reload.
-
-## Key Components
-
-### MatchmakerService
-Core service managing the entire matchmaking workflow:
-- Region and game mode selection
-- Queue management
-- Match simulation and generation
-- Countdown orchestration
-- Event publishing
-
-### EventEmitter
-Implements pub-sub pattern for state changes:
-- Decoupled communication between components
-- Type-safe event handling
-- Event history and debugging support
-
-### StorageService
-Handles local storage operations:
-- Settings persistence
-- Automatic serialization/deserialization
-- Error handling and fallbacks
-
-### MatchSimulationService
-Simulates backend matchmaking behavior:
-- Random wait times (3-15 seconds)
-- Match generation with realistic data
-- Map and team assignment
-- Player distribution
-
-### ScreenManager
-Controls screen transitions:
-- Mutual exclusivity (only one screen visible)
-- Clean lifecycle management
-- Coordination between screens
-
-### ApplicationController
-Main orchestrator:
-- Connects UI events to business logic
-- Manages state transitions
-- Coordinates all components
-
-## File Descriptions
-
-### Components
-- **Button.ts** - Reusable button with click handlers
-- **RegionSelector.ts** - Region selection UI with radio buttons
-- **GameModeSelector.ts** - Game mode selection UI
-- **LoadingAnimation.ts** - Animated spinner for search feedback
-- **CountdownDisplay.ts** - Large countdown timer display
-- **MatchInfoDisplay.ts** - Formatted match information display
-- **WaitingTimeDisplay.ts** - Real-time wait time counter
-
-### Screens
-- **MatchmakerScreen.ts** - Settings and Play button
-- **QueueScreen.ts** - Search animation and wait time
-- **MatchFoundScreen.ts** - Match details confirmation
-- **CountdownScreen.ts** - Pre-match countdown
-
-### Services
-- **EventEmitter.ts** - Pub-sub event system
-- **MatchmakerService.ts** - Core matchmaking orchestrator
-- **MatchSimulationService.ts** - Backend behavior simulation
-- **StorageService.ts** - Local storage wrapper
-
-### Models
-- **ApplicationController.ts** - Main app orchestrator
-- **ScreenManager.ts** - Screen lifecycle management
-
-### Types
-- **enums.ts** - Game enums (Region, GameMode, QueueState)
-- **models.ts** - Data interfaces
-- **events.ts** - Event system types
-
-### Utils
-- **random.ts** - Random number and ID generation
-- **storage.ts** - Local storage wrapper
-- **time.ts** - Time formatting and delays
-
-### Config
-- **defaults.ts** - Default values and constants
-
-## Styling
-
-The application includes a complete, modern UI with:
-- Gradient backgrounds and text
-- Smooth animations and transitions
-- Responsive grid layouts
-- Mobile-optimized design
-- Dark theme with cyan accents
-- Disabled and hover states
-
-All styles are in `src/assets/styles.css` with comprehensive media queries for all screen sizes.
-
-## Simulation Details
-
-### Wait Time
-- Minimum: 3 seconds
-- Maximum: 15 seconds
-- Varies randomly each search
-
-### Countdown
-- Duration: 10 seconds
-- Updates every 1 second
-- Color changes from green → yellow → red as time counts down
-
-### Match Data
-- 6 randomized map names
-- Players assigned to teams based on game mode
-- Match ID and team IDs generated uniquely
-
-## Browser Compatibility
-
-- Chrome/Edge 90+
-- Firefox 88+
-- Safari 14+
-- Mobile browsers (iOS Safari, Chrome Mobile)
-
-## Performance
-
-- Minimal DOM manipulation
-- Efficient event handling
-- No memory leaks (proper cleanup)
-- Optimized CSS with no heavy animations
-- Fast TypeScript compilation
-
-## Code Quality
-
-- 100% TypeScript (strict mode enabled)
-- Comprehensive type definitions
-- JSDoc comments on all public methods
-- Clean separation of concerns
-- Modular architecture
-- No external dependencies required
-
-## Extensibility
-
-The architecture allows easy extension:
-- Add new screens by extending the Screen pattern
-- Add new services for additional features
-- Extend EventEmitter for additional events
-- Add new components to UI library
-
-## Known Limitations
-
-- Simulated wait times are random (not based on actual metrics)
-- Match data is randomly generated (no real balance checking)
-- Countdown does not actually launch a game
-
-## License
-
-MIT
-
-## Version
-
-27.11.0
+ws://26.101.130.210:5353
+```
 
 ---
 
-**Built with TypeScript | Client-Side Only | Zero Dependencies**
+## 🏗️ Architecture
+
+### Matchmaking Flow
+
+```
+Client Connect → Connecting (200ms) → Waiting (1s) → Queued (2s) 
+              → SessionAssignment (6s) → Play (8s) → Client Joins Game
+```
+
+### Message Protocol
+
+The server sends JSON messages with this structure:
+
+```typescript
+{
+  "name": "StatusUpdate" | "Play",
+  "payload": {
+    // Status-specific data
+  }
+}
+```
+
+### Status Stages
+
+#### 1. **Connecting** (200ms)
+Client is establishing connection to matchmaker.
+```json
+{
+  "name": "StatusUpdate",
+  "payload": {
+    "state": "Connecting"
+  }
+}
+```
+
+#### 2. **Waiting** (1000ms)
+Client is waiting for other players.
+```json
+{
+  "name": "StatusUpdate",
+  "payload": {
+    "totalPlayers": 1,
+    "connectedPlayers": 1,
+    "state": "Waiting"
+  }
+}
+```
+
+#### 3. **Queued** (2000ms)
+Client is added to matchmaking queue.
+```json
+{
+  "name": "StatusUpdate",
+  "payload": {
+    "ticketId": "abc123...",
+    "queuedPlayers": 0,
+    "estimatedWaitSec": 0,
+    "status": {},
+    "state": "Queued"
+  }
+}
+```
+
+#### 4. **SessionAssignment** (6000ms)
+Match found, assigning game session.
+```json
+{
+  "name": "StatusUpdate",
+  "payload": {
+    "matchId": "def456...",
+    "state": "SessionAssignment"
+  }
+}
+```
+
+#### 5. **Play** (8000ms)
+Ready to join game - final message.
+```json
+{
+  "name": "Play",
+  "payload": {
+    "matchId": "def456...",
+    "sessionId": "ghi789...",
+    "joinDelaySec": 1
+  }
+}
+```
+
+---
+
+## 🎮 Game Modes
+
+| Mode | Description | Players |
+|------|-------------|---------|
+| **SOLO** | Single player mode | 1 |
+| **ONLINE** | Multiplayer mode | 2+ |
+
+---
+
+## 🌍 Regions
+
+- **NA_EAST** - North America East
+- **NA_WEST** - North America West
+- **EU** - Europe
+- **ASIA_PACIFIC** - Asia Pacific
+- **SOUTH_AMERICA** - South America
+- **MIDDLE_EAST** - Middle East
+
+---
+
+## 🛠️ Configuration
+
+### Server Settings
+
+Edit `src/index.ts` to change configuration:
+
+```typescript
+const PORT = 5353;           // WebSocket port
+const HOST = '26.101.130.210'; // Server IP (VPN)
+```
+
+### Timing Configuration
+
+Adjust matchmaking timing in `src/index.ts`:
+
+```typescript
+const TIMING = {
+  CONNECTING: 200,          // Initial connection
+  WAITING: 1000,            // Wait for players
+  QUEUED: 2000,             // Queue entry
+  SESSION_ASSIGNMENT: 6000, // Match found
+  JOIN: 8000                // Ready to play
+};
+```
+
+---
+
+## 📁 Project Structure
+
+```
+Matchmaker/
+├── src/
+│   └── index.ts              # Main WebSocket server
+├── dist/                     # Compiled JavaScript output
+├── node_modules/             # Dependencies
+├── package.json              # Project configuration
+├── tsconfig.json             # TypeScript configuration
+├── start.bat                 # Windows startup script
+├── start.ps1                 # PowerShell startup script
+├── README.md                 # This file
+└── ARCHITECTURE.md           # Detailed architecture docs
+```
+
+---
+
+## 🔌 Client Integration
+
+### Connecting to Matchmaker
+
+```javascript
+// Example client code
+const ws = new WebSocket('ws://26.101.130.210:5353');
+
+ws.onopen = () => {
+  console.log('Connected to matchmaker');
+};
+
+ws.onmessage = (event) => {
+  const message = JSON.parse(event.data);
+  console.log('Received:', message.name, message.payload);
+  
+  if (message.name === 'Play') {
+    // Join game with matchId and sessionId
+    joinGame(message.payload.matchId, message.payload.sessionId);
+  }
+};
+```
+
+---
+
+## 🐛 Troubleshooting
+
+### Port Already in Use
+
+If port 5353 is already in use, the startup scripts will automatically attempt to free it. If this fails:
+
+**Windows:**
+```bash
+netstat -ano | findstr :5353
+taskkill /PID <PID> /F
+```
+
+**PowerShell:**
+```powershell
+Get-NetTCPConnection -LocalPort 5353 | Select-Object OwningProcess
+Stop-Process -Id <PID> -Force
+```
+
+### Connection Refused
+
+Ensure:
+1. VPN is connected to `26.101.130.210`
+2. Firewall allows port `5353`
+3. Server is running (`npm start`)
+
+### Build Errors
+
+```bash
+# Clean and rebuild
+rm -rf dist node_modules
+npm install
+npm run build
+```
+
+---
+
+## 📊 Logging
+
+The server provides detailed logging:
+
+```
+🔌 New connection from: 192.168.1.100
+🎫 Ticket ID: abc123...
+🎯 Match ID: def456...
+📋 Session ID: ghi789...
+📤 [abc123] → Connecting
+📤 [abc123] → Waiting (1/1 players)
+📤 [abc123] → Queued (0 waiting)
+📤 [abc123] → SessionAssignment (Match: def456)
+📤 [abc123] → Play (Session: ghi789)
+✅ Matchmaking complete for ticket abc123
+```
+
+---
+
+## 🔒 Security Notes
+
+- **XMPP Protocol Blocking**: Connections using XMPP protocol are automatically rejected
+- **Unique Session IDs**: Each matchmaking session gets unique MD5-hashed identifiers
+- **VPN Required**: Server binds to VPN IP `26.101.130.210` only
+
+---
+
+## 📝 License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+---
+
+## 🙏 Credits
+
+- Based on [FortMatchmaker](https://github.com/Lawin0129/FortMatchmaker) by Lawin0129
+- Adapted for OGFN v27.11 with TypeScript
+- WebSocket library: [ws](https://github.com/websockets/ws)
+
+---
+
+## 🔗 Related Projects
+
+- [FortMatchmaker](https://github.com/Lawin0129/FortMatchmaker) - Original JavaScript implementation
+- [OGFN Backend](https://github.com/D0OC123/matchmaker) - Full OGFN backend server
+
+---
+
+## 📞 Support
+
+For issues, questions, or contributions, please refer to the [Issues](https://github.com/D0OC123/matchmaker/issues) page.
+
+---
+
+**Made with ❤️ for the OGFN Community**

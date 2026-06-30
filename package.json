@@ -1,18 +1,22 @@
 {
   "name": "ogfn-matchmaker",
   "version": "27.11.0",
-  "description": "OGFN Matchmaker System - Client-side only",
+  "description": "OGFN Matchmaker WebSocket Server - Real Matchmaking for OGFN v27.11",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
-    "dev": "tsc --watch",
-    "serve": "http-server dist -p 5353 -c-1 -a 26.101.130.210"
+    "start": "node dist/index.js",
+    "dev": "tsc --watch"
   },
-  "keywords": ["matchmaker", "ogfn", "typescript"],
+  "keywords": ["matchmaker", "ogfn", "typescript", "websocket", "fortnite"],
   "author": "",
   "license": "MIT",
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
   "devDependencies": {
     "@types/node": "^20.0.0",
+    "@types/ws": "^8.5.12",
     "typescript": "^5.0.0"
   }
 }
